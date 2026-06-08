@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SGS — Sistema de Gestão de Solicitações</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet"/>
+<style>
+/* ─── RESET & TOKENS ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0d0f14;
+  --surface:   #14171f;
+  --surface2:  #1c2030;
+  --border:    #252b3b;
+  --border2:   #2e3650;
+  --text:      #e2e8f8;
+  --muted:     #7b8aaa;
+  --accent:    #3d7aff;
+  --accent-h:  #5d93ff;
+  --green:     #22c55e;
+  --yellow:    #eab308;
+  --red:       #ef4444;
+  --orange:    #f97316;
+  --purple:    #a855f7;
+  --radius:    8px;
+  --mono:      'IBM Plex Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
+  --shadow:    0 4px 24px rgba(0,0,0,.5);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ─── LAYOUT ──────────────────────────────────────────────────────────── */
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 0 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.logo {
+  padding: 0 24px 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.logo-abbr {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: -.5px;
+}
+.logo-full {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 24px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all .15s;
+  border-left: 3px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(61,122,255,.08); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+.main { flex: 1; padding: 36px 40px; max-width: 1200px; }
+
+/* ─── TOPBAR ──────────────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.3px;
+}
+.page-sub { color: var(--muted); font-size: 13px; }
+
+/* ─── VIEWS ──────────────────────────────────────────────────────────── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ─── CARDS / PANELS ─────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.card + .card { margin-top: 20px; }
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+/* ─── FORM ───────────────────────────────────────────────────────────── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+input, select, textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 9px 12px;
+  transition: border-color .15s;
+  outline: none;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 80px; }
+select option { background: var(--surface2); }
+
+/* ─── BUTTONS ────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-h); }
+.btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-danger { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+.btn-danger:hover { background: rgba(239,68,68,.25); }
+
+/* ─── FILTERS BAR ────────────────────────────────────────────────────── */
+.filters {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.filter-group { display: flex; flex-direction: column; gap: 5px; }
+.filter-group label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.filter-group select,
+.filter-group input { min-width: 160px; padding: 7px 10px; font-size: 13px; }
+.filter-actions { margin-left: auto; display: flex; gap: 8px; align-items: flex-end; }
+
+/* ─── TABLE ──────────────────────────────────────────────────────────── */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; }
+thead tr { background: var(--surface2); border-bottom: 1px solid var(--border); }
+th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .1s; }
+tbody tr:hover { background: var(--surface2); }
+
+/* ─── STATUS BADGE ───────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+  letter-spacing: .3px;
+  text-transform: uppercase;
+}
+.badge-SOLICITADO { background: rgba(61,122,255,.15); color: var(--accent); }
+.badge-LIBERADO   { background: rgba(234,179,8,.15);  color: var(--yellow); }
+.badge-APROVADO   { background: rgba(34,197,94,.15);  color: var(--green); }
+.badge-REJEITADO  { background: rgba(239,68,68,.15);  color: var(--red); }
+.badge-CANCELADO  { background: rgba(123,138,170,.12); color: var(--muted); }
+
+/* ─── DETAIL MODAL ───────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  width: 560px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+  transform: translateY(12px);
+  transition: transform .2s;
+}
+.overlay.open .modal { transform: translateY(0); }
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 16px; font-weight: 700; }
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px;
+  transition: color .15s;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 24px; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.detail-item { display: flex; flex-direction: column; gap: 4px; }
+.detail-item.full { grid-column: 1/-1; }
+.detail-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.detail-value { font-size: 14px; }
+.detail-value.mono { font-family: var(--mono); font-size: 13px; }
+.modal-footer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.modal-footer .label-sm { font-size: 12px; color: var(--muted); margin-right: 4px; }
+
+/* ─── EMPTY STATE ────────────────────────────────────────────────────── */
+.empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; opacity: .5; }
+.empty p { font-size: 14px; }
+
+/* ─── TOAST ──────────────────────────────────────────────────────────── */
+#toast-area { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+.toast {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all .25s;
+  max-width: 320px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { border-color: rgba(34,197,94,.4); }
+.toast.error   { border-color: rgba(239,68,68,.4); color: var(--red); }
+
+/* ─── VALUE ──────────────────────────────────────────────────────────── */
+.value-num { font-family: var(--mono); font-size: 13px; }
+
+/* ─── STATUS TRANSITION ──────────────────────────────────────────────── */
+.transition-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .15s;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.t-LIBERADO  { background: rgba(234,179,8,.12); color: var(--yellow); border-color: rgba(234,179,8,.3); }
+.t-LIBERADO:hover  { background: rgba(234,179,8,.22); }
+.t-APROVADO  { background: rgba(34,197,94,.12);  color: var(--green);  border-color: rgba(34,197,94,.3); }
+.t-APROVADO:hover  { background: rgba(34,197,94,.22); }
+.t-REJEITADO { background: rgba(239,68,68,.12);  color: var(--red);    border-color: rgba(239,68,68,.3); }
+.t-REJEITADO:hover { background: rgba(239,68,68,.22); }
+.t-CANCELADO { background: rgba(123,138,170,.1); color: var(--muted);  border-color: rgba(123,138,170,.25); }
+.t-CANCELADO:hover { background: rgba(123,138,170,.2); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ─── SIDEBAR ─────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-abbr">SGS</div>
+      <div class="logo-full">Gestão de Solicitações</div>
+    </div>
+    <nav>
+      <div class="nav-item active" data-view="listagem" onclick="showView('listagem', this)">
+        <span class="nav-icon">☰</span> Solicitações
+      </div>
+      <div class="nav-item" data-view="cadastro" onclick="showView('cadastro', this)">
+        <span class="nav-icon">＋</span> Nova Solicitação
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ─── MAIN ─────────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- ── VIEW: LISTAGEM ────────────────────────────────────────────── -->
+    <div id="view-listagem" class="view active">
+      <div class="topbar">
+        <div class="page-title">Solicitações</div>
+        <div class="page-sub">Acompanhe e gerencie todas as solicitações de pagamento</div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filters">
+        <div class="filter-group">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="">Todos</option>
+            <option>SOLICITADO</option>
+            <option>LIBERADO</option>
+            <option>APROVADO</option>
+            <option>REJEITADO</option>
+            <option>CANCELADO</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Categoria</label>
+          <select id="f-categoria"></select>
+        </div>
+        <div class="filter-group">
+          <label>Data início</label>
+          <input type="date" id="f-inicio"/>
+        </div>
+        <div class="filter-group">
+          <label>Data fim</label>
+          <input type="date" id="f-fim"/>
+        </div>
+        <div class="filter-actions">
+          <button class="btn btn-ghost btn-sm" onclick="limparFiltros()">Limpar</button>
+          <button class="btn btn-primary btn-sm" onclick="carregarLista()">🔍 Filtrar</button>
+        </div>
+      </div>
+
+      <!-- Tabela -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Solicitante</th>
+              <th>Documento</th>
+              <th>Categoria</th>
+              <th>Valor</th>
+              <th>Data</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-body">
+            <tr><td colspan="8"><div class="empty"><div class="empty-icon">⏳</div><p>Carregando…</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── VIEW: CADASTRO ───────────────────────────────────────────── -->
+    <div id="view-cadastro" class="view">
+      <div class="topbar">
+        <div class="page-title">Nova Solicitação</div>
+        <div class="page-sub">Preencha os dados para registrar uma solicitação de pagamento</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Dados da Solicitação</div>
+        <form id="form-cadastro" onsubmit="submeterCadastro(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="c-solicitante">Solicitante *</label>
+              <select id="c-solicitante" required></select>
+            </div>
+            <div class="form-group">
+              <label for="c-categoria">Categoria *</label>
+              <select id="c-categoria" required></select>
+            </div>
+            <div class="form-group">
+              <label for="c-valor">Valor (R$) *</label>
+              <input type="number" id="c-valor" min="0.01" step="0.01" placeholder="0,00" required/>
+            </div>
+            <div class="form-group">
+              <label for="c-data">Data da Solicitação</label>
+              <input type="date" id="c-data"/>
+            </div>
+            <div class="form-group full">
+              <label for="c-descricao">Descrição *</label>
+              <textarea id="c-descricao" placeholder="Descreva o objeto da solicitação…" required></textarea>
+            </div>
+          </div>
+          <div style="margin-top:20px; display:flex; gap:10px;">
+            <button type="submit" class="btn btn-primary">Registrar Solicitação</button>
+            <button type="button" class="btn btn-ghost" onclick="document.getElementById('form-cadastro').reset()">Limpar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ─── MODAL DETALHE ──────────────────────────────────────────────────── -->
+<div class="overlay" id="modal-overlay" onclick="fecharModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Detalhes da Solicitação</div>
+      <button class="modal-close" onclick="fecharModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- ─── TOAST ──────────────────────────────────────────────────────────── -->
+<div id="toast-area"></div>
+
+<script>
+const API = 'http://localhost:8080/api';
+
+// ─── TRANSIÇÕES PERMITIDAS (espelho do enum Java) ──────────────────────────
+const TRANSICOES = {
+  SOLICITADO: ['LIBERADO', 'REJEITADO'],
+  LIBERADO:   ['APROVADO', 'REJEITADO'],
+  APROVADO:   ['CANCELADO'],
+  REJEITADO:  [],
+  CANCELADO:  [],
+};
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+const fmt = (v) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v);
+const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+const badge = (s) => `<span class="badge badge-${s}">${s}</span>`;
+
+async function api(path, opts={}) {
+  const r = await fetch(API + path, { headers: {'Content-Type':'application/json'}, ...opts });
+  const data = await r.json().catch(()=>({}));
+  if (!r.ok) throw new Error(data.erro || data.message || `HTTP ${r.status}`);
+  return data;
+}
+
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-area').appendChild(el);
+  requestAnimationFrame(()=>{ el.classList.add('show'); });
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(), 300); }, 3200);
+}
+
+// ─── NAVEGAÇÃO ──────────────────────────────────────────────────────────────
+function showView(id, el) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ─── SELECTS AUXILIARES ────────────────────────────────────────────────────
+async function popularSelects() {
+  const [solicitantes, categorias] = await Promise.all([
+    api('/solicitantes'), api('/categorias')
+  ]);
+
+  // Cadastro
+  const sSol = document.getElementById('c-solicitante');
+  const sCat = document.getElementById('c-categoria');
+  sSol.innerHTML = '<option value="">Selecione…</option>' +
+    solicitantes.map(s=>`<option value="${s.id}">${s.nome} — ${s.cpfCnpj}</option>`).join('');
+  sCat.innerHTML = '<option value="">Selecione…</option>' +
+    categorias.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+
+  // Filtro categoria
+  const fCat = document.getElementById('f-categoria');
+  fCat.innerHTML = '<option value="">Todas</option>' +
+    categorias.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+}
+
+// ─── LISTAGEM ──────────────────────────────────────────────────────────────
+async function carregarLista() {
+  const status     = document.getElementById('f-status').value;
+  const categoriaId= document.getElementById('f-categoria').value;
+  const dataInicio = document.getElementById('f-inicio').value;
+  const dataFim    = document.getElementById('f-fim').value;
+
+  const params = new URLSearchParams();
+  if (status)      params.set('status', status);
+  if (categoriaId) params.set('categoriaId', categoriaId);
+  if (dataInicio)  params.set('dataInicio', dataInicio);
+  if (dataFim)     params.set('dataFim', dataFim);
+
+  const tbody = document.getElementById('tabela-body');
+  tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">⏳</div><p>Carregando…</p></div></td></tr>';
+
+  try {
+    const lista = await api('/solicitacoes?' + params.toString());
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🗂️</div><p>Nenhuma solicitação encontrada.</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = lista.map(s => `
+      <tr>
+        <td class="mono" style="color:var(--muted)">#${s.id}</td>
+        <td>${esc(s.nomeSolicitante)}</td>
+        <td class="mono" style="color:var(--muted);font-size:12px">${esc(s.cpfCnpjSolicitante)}</td>
+        <td>${esc(s.nomeCategoria)}</td>
+        <td class="value-num">${fmt(s.valor)}</td>
+        <td style="color:var(--muted);font-size:12px">${fmtDate(s.dataSolicitacao)}</td>
+        <td>${badge(s.status)}</td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="abrirDetalhe(${s.id})">Detalhe</button>
+            ${botoesTransicao(s)}
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">⚠️</div><p>${e.message}</p></div></td></tr>`;
+  }
+}
+
+function botoesTransicao(s) {
+  return (TRANSICOES[s.status] || []).map(ns => `
+    <button class="transition-btn t-${ns}" onclick="mudarStatus(${s.id},'${ns}')">→ ${ns}</button>
+  `).join('');
+}
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+function limparFiltros() {
+  ['f-status','f-categoria','f-inicio','f-fim'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.value = '';
+  });
+  carregarLista();
+}
+
+// ─── MUDANÇA DE STATUS RÁPIDA ──────────────────────────────────────────────
+async function mudarStatus(id, novoStatus) {
+  try {
+    await api(`/solicitacoes/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ novoStatus })
+    });
+    toast(`Status atualizado para ${novoStatus}`);
+    carregarLista();
+    if (document.getElementById('modal-overlay').classList.contains('open')) {
+      abrirDetalhe(id);
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ─── DETALHE ───────────────────────────────────────────────────────────────
+async function abrirDetalhe(id) {
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('modal-body').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div></div>';
+  document.getElementById('modal-footer').innerHTML = '';
+
+  try {
+    const s = await api(`/solicitacoes/${id}`);
+    document.getElementById('modal-title').textContent = `Solicitação #${s.id}`;
+    document.getElementById('modal-body').innerHTML = `
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Solicitante</span>
+          <span class="detail-value">${esc(s.nomeSolicitante)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">CPF / CNPJ</span>
+          <span class="detail-value mono">${esc(s.cpfCnpjSolicitante)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Categoria</span>
+          <span class="detail-value">${esc(s.nomeCategoria)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Valor</span>
+          <span class="detail-value mono" style="color:var(--green)">${fmt(s.valor)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Data</span>
+          <span class="detail-value">${fmtDate(s.dataSolicitacao)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Status</span>
+          <span class="detail-value">${badge(s.status)}</span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Descrição</span>
+          <span class="detail-value" style="white-space:pre-wrap">${esc(s.descricao)}</span>
+        </div>
+      </div>`;
+
+    const footer = document.getElementById('modal-footer');
+    const transicoes = TRANSICOES[s.status] || [];
+    if (transicoes.length) {
+      footer.innerHTML = '<span class="label-sm">Avançar para:</span>' +
+        transicoes.map(ns =>
+          `<button class="transition-btn t-${ns}" onclick="mudarStatus(${s.id},'${ns}')">→ ${ns}</button>`
+        ).join('');
+    } else {
+      footer.innerHTML = `<span class="label-sm" style="color:var(--muted)">Estado final — sem transições disponíveis.</span>`;
+    }
+  } catch(e) {
+    document.getElementById('modal-body').innerHTML = `<p style="color:var(--red)">${e.message}</p>`;
+  }
+}
+
+function fecharModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// ─── CADASTRO ──────────────────────────────────────────────────────────────
+async function submeterCadastro(e) {
+  e.preventDefault();
+  const payload = {
+    solicitanteId: +document.getElementById('c-solicitante').value,
+    categoriaId:   +document.getElementById('c-categoria').value,
+    valor:          +document.getElementById('c-valor').value,
+    descricao:      document.getElementById('c-descricao').value,
+    dataSolicitacao: document.getElementById('c-data').value || null
+  };
+  try {
+    const criada = await api('/solicitacoes', { method:'POST', body: JSON.stringify(payload) });
+    toast(`Solicitação #${criada.id} registrada com sucesso!`);
+    document.getElementById('form-cadastro').reset();
+    // Navega para listagem
+    const navLista = document.querySelector('[data-view="listagem"]');
+    showView('listagem', navLista);
+    carregarLista();
+  } catch(err) {
+    toast(err.message, 'error');
+  }
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+(async()=>{
+  // Data padrão do campo de data de cadastro = hoje
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('c-data').value = hoje;
+
+  await popularSelects();
+  await carregarLista();
+})();
+</script>
+</body>
+</html>
